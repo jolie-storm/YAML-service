@@ -3,13 +3,14 @@ package joliex.yaml;
 import jolie.runtime.Value;
 import junit.framework.TestCase;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 
+public class YamlServiceTest extends TestCase {
 
-class YamlServiceTest extends TestCase {
-
-
-    public void yamlToValue() {
+    public void testYamlToValue() {
         Value testValue = Value.create();
 
 
@@ -33,5 +34,6 @@ class YamlServiceTest extends TestCase {
         }
 
         YamlService.yamlToValue(testValue);
+
     }
 }
