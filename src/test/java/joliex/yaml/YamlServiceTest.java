@@ -1,37 +1,55 @@
 package joliex.yaml;
 
+import jolie.runtime.FaultException;
 import jolie.runtime.Value;
 import junit.framework.TestCase;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestName;
 
-import java.io.*;
-
-
-class YamlServiceTest extends TestCase {
-
-
-    public void yamlToValue() {
-        Value testValue = Value.create();
-
-
-        try {
-
-            BufferedReader rd = new BufferedReader(new FileReader("webserver.yaml"));
-            String inputLine = null;
-            StringBuilder builder = new StringBuilder();
-
-            //Store the contents of the file to the StringBuilder.
-            while ((inputLine = rd.readLine()) != null)
-                builder.append(inputLine);
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 
-            testValue.getNewChild("yaml").setValue(builder.toString());
+public class YamlServiceTest {
+    private static YamlService yamlService;
 
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+    private static String readFromInputStream(InputStream inputStream)
+            throws IOException {
+        StringBuilder resultStringBuilder = new StringBuilder();
+        try (BufferedReader br
+                     = new BufferedReader(new InputStreamReader(inputStream))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                resultStringBuilder.append(line).append("\n");
+            }
         }
+        return resultStringBuilder.toString();
+    }
 
-        YamlService.yamlToValue(testValue);
+    private static String getFileContent (String fileName) throws IOException {
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        InputStream inputStream = classLoader.getResourceAsStream(fileName + ".yaml");
+
+        return readFromInputStream(inputStream);
+    }
+
+    @BeforeClass
+    public static void setYamlService () {
+        yamlService = new YamlService();
+    }
+
+    @Rule
+    public TestName testName = new TestName();
+
+    @Test
+    public void testSimpleFields() throws IOException, FaultException {
+        Value testValue = Value.create();
+        testValue.getNewChild("yaml").setValue(getFileContent(testName.getMethodName()));
+
+        yamlService.yamlToValue(testValue);
     }
 }
