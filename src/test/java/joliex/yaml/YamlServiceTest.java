@@ -3,6 +3,7 @@ package joliex.yaml;
 import jolie.runtime.FaultException;
 import jolie.runtime.Value;
 import junit.framework.TestCase;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -46,10 +47,14 @@ public class YamlServiceTest {
     public TestName testName = new TestName();
 
     @Test
-    public void testSimpleFields() throws IOException, FaultException {
+    public void testSimpleFields() throws Exception {
         Value testValue = Value.create();
         testValue.getNewChild("yaml").setValue(getFileContent(testName.getMethodName()));
 
-        yamlService.yamlToValue(testValue);
+        Value response = yamlService.yamlToValue(testValue);
+
+        Value node = response.getFirstChild("key");
+        Assert.assertNotNull("key child not found" , node);
+        Assert.assertTrue("expected value found "+ node.strValue(),"value".equals(node.strValue()));
     }
 }

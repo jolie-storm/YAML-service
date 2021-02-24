@@ -116,6 +116,8 @@ public class YamlService extends JavaService {
                 throw new FaultException(YAMLERROR,faultMessage);
 
         }
+
+        setObject(response,parser);
     }
 
     private void setChildValue(Value newChild, JsonToken token, YAMLParser parser) throws IOException {
