@@ -22,7 +22,7 @@ public class YamlServiceTest extends TestCase {
 
             //Store the contents of the file to the StringBuilder.
             while ((inputLine = rd.readLine()) != null)
-                builder.append(inputLine);
+                builder.append(inputLine).append("\n");
 
 
             testValue.getNewChild("yaml").setValue(builder.toString());
