@@ -13,6 +13,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 
 
 public class YamlServiceTest {
@@ -56,5 +58,46 @@ public class YamlServiceTest {
         Value node = response.getFirstChild("key");
         Assert.assertNotNull("key child not found" , node);
         Assert.assertTrue("expected value found "+ node.strValue(),"value".equals(node.strValue()));
+
+        node = response.getFirstChild("another_key");
+        Assert.assertNotNull("another_key child not found" , node);
+        Assert.assertTrue("expected 'Another value goes here.' found "+ node.strValue(),"Another value goes here.".equals(node.strValue()));
+
+        node = response.getFirstChild("a_number_value");
+        Assert.assertNotNull("a_number_value child not found" , node);
+        Assert.assertTrue("expected 100 found: "+ node.strValue(),"100".equals(node.strValue()));
+
+        node = response.getFirstChild("scientific_notation");
+        Assert.assertNotNull("scientific_notation child not found" , node);
+
+        BigDecimal expectedValue = new BigDecimal("1e+12");
+        BigDecimal actualValue = new BigDecimal(node.strValue());
+        Assert.assertTrue("expected 1e+12 found: "+ node.strValue(), expectedValue.compareTo(actualValue) == 0);
+
+        node = response.getFirstChild("boolean");
+        Assert.assertNotNull("boolean child not found" , node);
+        Assert.assertTrue("expected true found: "+ node.strValue(), node.boolValue());
+
+        node = response.getFirstChild("null_value");
+        Assert.assertNotNull("null_value child not found" , node);
+        Assert.assertNull("expected null found: "+ node.strValue(),node.valueObject());
+
+        node = response.getFirstChild("key with spaces");
+        Assert.assertNotNull("'key with spaces' child not found" , node);
+        Assert.assertTrue("expected value found: "+ node.strValue(),"value".equals(node.strValue()));
+
+        node = response.getFirstChild("Keys can be quoted too.");
+        Assert.assertNotNull("'Keys can be quoted too.' child not found" , node);
+        Assert.assertTrue("expected \"Useful if you want to put a ':' in your key.\" found: "+ node.strValue(),"Useful if you want to put a ':' in your key.".equals(node.strValue()));
+
+        node = response.getFirstChild("single quotes");
+        Assert.assertNotNull("\"single quotes\" child not found" , node);
+        Assert.assertTrue("expected \"'have ''one'' escape pattern'\" found: "+ node.strValue(),"have 'one' escape pattern".equals(node.strValue()));
+
+        node = response.getFirstChild("double quotes");
+        Assert.assertNotNull("\"double quotes\" child not found" , node);
+        byte[] stringBytes = new String ("have many: \", \0, \t, \u263A, \r\n == \r\n, and more.").getBytes(StandardCharsets.UTF_8);
+        String expectedStringValue = new String(stringBytes, StandardCharsets.UTF_8);
+        Assert.assertTrue("expected \"have many: \\\", \\0, \\t, \\u263A, \\x0d\\x0a == \\r\\n, and more.\" found: "+ node.strValue(),expectedStringValue.equals(node.strValue()));
     }
 }
