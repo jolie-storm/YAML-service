@@ -13,11 +13,6 @@ import java.io.IOException;
 import java.util.regex.Pattern;
 
 public class YamlService extends JavaService {
-    private final static Pattern NOT_ALLOWED_NAME_CHARS;
-
-    static {
-        NOT_ALLOWED_NAME_CHARS = Pattern.compile("\\p{Cntrl}]");
-    }
 
     private static final String CHILDYAML = "yaml";
 
@@ -90,10 +85,7 @@ public class YamlService extends JavaService {
                 Value newChild = null;
 
                 try {
-                    newChild = response.getNewChild(
-                            NOT_ALLOWED_NAME_CHARS
-                                    .matcher(parser.getCurrentName())
-                                    .replaceAll("_"));
+                    newChild = response.getNewChild(parser.getCurrentName());
                 } catch (IOException e) {
                     Value faultMessage = Value.create();
                     faultMessage.getNewChild(MSG).setValue(PARSER_CURRENTNAME);
