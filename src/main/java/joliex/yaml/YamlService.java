@@ -107,7 +107,8 @@ public class YamlService extends JavaService {
                     case VALUE_TRUE:
                     case VALUE_NUMBER_FLOAT:
                     case VALUE_NUMBER_INT:
-                        setChildValue(newChild, token, parser);
+                        Value valueToAdd = Value.create(parser.getValueAsString());
+                        newChild.add(valueToAdd);
                         break;
                     default:
                         Value faultMessage = Value.create();
@@ -165,24 +166,6 @@ public class YamlService extends JavaService {
                     faultMessage.getNewChild(MSG).setValue(EXPECTED_VALUES_SETARRAY + token.toString());
                     throw new FaultException(YAMLERROR, faultMessage);
             }
-        }
-    }
-
-    private void setChildValue(Value newChild, JsonToken token, YAMLParser parser) throws IOException {
-        switch (token) {
-            case VALUE_STRING:
-                newChild.setValue(parser.getValueAsString());
-                break;
-            case VALUE_FALSE:
-            case VALUE_TRUE:
-                newChild.setValue(parser.getBooleanValue());
-                break;
-            case VALUE_NULL:
-                newChild.setValue((Object) null);
-                break;
-            case VALUE_NUMBER_FLOAT:
-            case VALUE_NUMBER_INT:
-                newChild.setValue(parser.getDecimalValue());
         }
     }
 }
