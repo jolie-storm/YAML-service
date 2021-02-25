@@ -65,7 +65,6 @@ public class YamlService extends JavaService {
             throw new FaultException(YAMLERROR, faultMessage);
         }
 
-
         return response;
     }
 

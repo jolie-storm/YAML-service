@@ -100,4 +100,24 @@ public class YamlServiceTest {
         String expectedStringValue = new String(stringBytes, StandardCharsets.UTF_8);
         Assert.assertTrue("expected \"have many: \\\", \\0, \\t, \\u263A, \\x0d\\x0a == \\r\\n, and more.\" found: "+ node.strValue(),expectedStringValue.equals(node.strValue()));
     }
+
+    @Test
+    public void testNestedMap() throws Exception {
+        Value testValue = Value.create();
+        testValue.getNewChild("yaml").setValue(getFileContent(testName.getMethodName()));
+
+        Value response = yamlService.yamlToValue(testValue);
+
+        Value node = response.getFirstChild("0.25");
+        Assert.assertNotNull("key 0.25 not found" , node);
+        Assert.assertTrue("expected 'a float key', found "+ node.strValue(),"a float key".equals(node.strValue()));
+
+        node = response.getFirstChild("This is a key\n" +
+                "  that has multiple lines\n");
+        Assert.assertNotNull("key 'This is a key\n" +
+                "  that has multiple lines' not found" , node);
+        Assert.assertTrue("expected 'and this is its value', found "+ node.strValue(),"and this is its value".equals(node.strValue()));
+
+    }
+
 }
