@@ -19,6 +19,9 @@ public class YamlService extends JavaService {
     // Jolie field message name
     private static final String MSG = "msg";
 
+    // Name of the dummy node used to set an array inside an array
+    private static final String DUMMY_NODE = "_";
+
     // Error Messages
     private static final String UNABLE_TO_CREATE_YAML_FACTORY = "Unable to create a Yaml factory to analise yaml file";
     private static final String UNABLE_GET_FIRST_TOKEN = "Unable to get the first token from file.";
@@ -26,6 +29,8 @@ public class YamlService extends JavaService {
     private static final String EXPECTED_ENDOBJECT_FIELDNAME = "Expected END_OBJECT / FIELD_NAME, founded: ";
     private static final String PARSER_CURRENTNAME = "Unable to get the current field name";
     private static final String EXPECTED_VALUES = "Expected START_OBJECT/START_ARRAY/VALUE_xx, found: ";
+    private static final String EXPECTED_VALUES_SETARRAY = "Expected START_OBJECT/START_ARRAY/VALUE_xx/END_ARRAY, found: ";
+    private static final String UNABLE_TOREAD_TOKEN = "Unable to read the next token (IOExecption)";
 
 
     @RequestResponse
@@ -40,7 +45,7 @@ public class YamlService extends JavaService {
         } catch (IOException e) {
             Value faultMessage = Value.create();
             faultMessage.getNewChild(MSG).setValue(UNABLE_TO_CREATE_YAML_FACTORY);
-            throw new FaultException(YAMLERROR,faultMessage);
+            throw new FaultException(YAMLERROR, faultMessage);
         }
 
         try {
@@ -49,15 +54,15 @@ public class YamlService extends JavaService {
             if (token != JsonToken.START_OBJECT) {
                 Value faultMessage = Value.create();
                 faultMessage.getNewChild(MSG).setValue(START_OBJECT_EXPECTED);
-                throw new FaultException(YAMLERROR,faultMessage);
+                throw new FaultException(YAMLERROR, faultMessage);
             }
 
-            setObject (response, parser);
+            setObject(response, parser);
 
         } catch (IOException e) {
             Value faultMessage = Value.create();
             faultMessage.getNewChild(MSG).setValue(UNABLE_GET_FIRST_TOKEN);
-            throw new FaultException(YAMLERROR,faultMessage);
+            throw new FaultException(YAMLERROR, faultMessage);
         }
 
 
@@ -82,7 +87,7 @@ public class YamlService extends JavaService {
                 } catch (IOException e) {
                     Value faultMessage = Value.create();
                     faultMessage.getNewChild(MSG).setValue(PARSER_CURRENTNAME);
-                    throw new FaultException(YAMLERROR,faultMessage);
+                    throw new FaultException(YAMLERROR, faultMessage);
                 }
                 // look ahead for the cases:
                 // 1 - simple value - set the value and continue to find other field name
@@ -92,9 +97,9 @@ public class YamlService extends JavaService {
 
                 switch (token) {
                     case START_ARRAY:
-                        throw new Exception("START_ARRAY not implemented");
+                        setArray(newChild, parser);
                     case START_OBJECT:
-                        setObject(newChild,parser);
+                        setObject(newChild, parser);
                         break;
                     case VALUE_STRING:
                     case VALUE_FALSE:
@@ -107,17 +112,60 @@ public class YamlService extends JavaService {
                     default:
                         Value faultMessage = Value.create();
                         faultMessage.getNewChild(MSG).setValue(EXPECTED_VALUES + token.toString());
-                        throw new FaultException(YAMLERROR,faultMessage);
+                        throw new FaultException(YAMLERROR, faultMessage);
                 }
                 break;
             default:
                 Value faultMessage = Value.create();
                 faultMessage.getNewChild(MSG).setValue(EXPECTED_ENDOBJECT_FIELDNAME + token.toString());
-                throw new FaultException(YAMLERROR,faultMessage);
+                throw new FaultException(YAMLERROR, faultMessage);
 
         }
 
-        setObject(response,parser);
+        setObject(response, parser);
+    }
+
+    private void setArray(Value arrayChild, YAMLParser parser) throws Exception {
+        JsonToken token = null;
+
+        try {
+            token = parser.nextToken();
+        } catch (IOException e) {
+            Value faultMessage = Value.create();
+            faultMessage.getNewChild(MSG).setValue(UNABLE_TOREAD_TOKEN);
+            throw new FaultException(YAMLERROR, faultMessage);
+        }
+
+        // get and set all the different values
+        // temporary variable: contain the value to be assigned
+        Value valueToAdd;
+
+        while (token != JsonToken.END_ARRAY) {
+            switch (token) {
+                case START_ARRAY:
+                    //create a dummy child named '_'
+                    setArray(arrayChild.getNewChild(DUMMY_NODE), parser);
+                    break;
+                case START_OBJECT:
+                    Value objValue = Value.create();
+                    setObject(objValue, parser);
+                    arrayChild.add(objValue);
+                    break;
+                case VALUE_STRING:
+                case VALUE_FALSE:
+                case VALUE_NULL:
+                case VALUE_TRUE:
+                case VALUE_NUMBER_FLOAT:
+                case VALUE_NUMBER_INT:
+                    valueToAdd = Value.create(parser.getValueAsString());
+                    arrayChild.add(valueToAdd);
+                    break;
+                default:
+                    Value faultMessage = Value.create();
+                    faultMessage.getNewChild(MSG).setValue(EXPECTED_VALUES_SETARRAY + token.toString());
+                    throw new FaultException(YAMLERROR, faultMessage);
+            }
+        }
     }
 
     private void setChildValue(Value newChild, JsonToken token, YAMLParser parser) throws IOException {
@@ -130,13 +178,11 @@ public class YamlService extends JavaService {
                 newChild.setValue(parser.getBooleanValue());
                 break;
             case VALUE_NULL:
-                newChild.setValue((Object)null);
+                newChild.setValue((Object) null);
                 break;
             case VALUE_NUMBER_FLOAT:
             case VALUE_NUMBER_INT:
                 newChild.setValue(parser.getDecimalValue());
         }
     }
-
-
 }
