@@ -122,6 +122,19 @@ public class YamlServiceTest {
                 "that has multiple lines\n");
         Assert.assertTrue("expected 'and this is its value', found "+ node.strValue(),"and this is its value".equals(node.strValue()));
 
+        Assert.assertTrue("key 'a_nested_map' not found" , response.hasChildren("a_nested_map"));
+        int nrChildren = response.getChildren("a_nested_map").size();
+        Assert.assertEquals("a_nested_map: expected 3 children founded "+ nrChildren,nrChildren,3);
+        node = response.getFirstChild("a_nested_map");
+        Assert.assertTrue("key 'key' not found" , node.hasChildren("key"));
+        Assert.assertTrue("key 'another_key' not found" , node.hasChildren("another_key"));
+        Assert.assertTrue("key 'another_nested_map' not found" , node.hasChildren("another_nested_map"));
+
+        node = response.getFirstChild("another_nested_map");
+        nrChildren = node.getChildren("another_nested_map").size();
+        Assert.assertEquals("another_nested_map: expected 1 child, founded: "+nrChildren,nrChildren,1);
+        Assert.assertTrue("key 'hello' not found" , node.hasChildren("hello"));
+
     }
 
 }
