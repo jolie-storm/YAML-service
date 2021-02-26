@@ -50,7 +50,7 @@ public class YamlServiceTest {
     @Test
     public void testSimpleFields() throws Exception {
         Value testValue = Value.create();
-        testValue.getNewChild("yaml").setValue(getFileContent(testName.getMethodName()));
+        testValue.getNewChild("yamlContent").setValue(getFileContent(testName.getMethodName()));
 
         Value response = yamlService.yamlToValue(testValue);
 
@@ -87,16 +87,16 @@ public class YamlServiceTest {
         node = response.getFirstChild("key with spaces");
         Assert.assertTrue("expected value found: "+ node.strValue(),"value".equals(node.strValue()));
 
-        Assert.assertTrue("key 'Keys can be quoted too.' not found" , response.hasChildren("'Keys can be quoted too.'"));
+        Assert.assertTrue("key 'Keys can be quoted too.' not found" , response.hasChildren("Keys can be quoted too."));
         node = response.getFirstChild("Keys can be quoted too.");
         Assert.assertTrue("expected \"Useful if you want to put a ':' in your key.\" found: "+ node.strValue(),"Useful if you want to put a ':' in your key.".equals(node.strValue()));
 
 
-        Assert.assertTrue("key 'single quotes' not found" , response.hasChildren("'Keys can be quoted too.'"));
+        Assert.assertTrue("key 'single quotes' not found" , response.hasChildren("single quotes"));
         node = response.getFirstChild("single quotes");
         Assert.assertTrue("expected \"'have ''one'' escape pattern'\" found: "+ node.strValue(),"have 'one' escape pattern".equals(node.strValue()));
 
-        Assert.assertTrue("key 'double quotes' not found" , response.hasChildren("'Keys can be quoted too.'"));
+        Assert.assertTrue("key 'double quotes' not found" , response.hasChildren("double quotes"));
         node = response.getFirstChild("double quotes");
         byte[] stringBytes = new String ("have many: \", \0, \t, \u263A, \r\n == \r\n, and more.").getBytes(StandardCharsets.UTF_8);
         String expectedStringValue = new String(stringBytes, StandardCharsets.UTF_8);
