@@ -38,6 +38,7 @@ public class YamlService extends JavaService {
 
     @RequestResponse
     public Value yamlToValue(Value request) throws Exception {
+        System.out.println("sono qua");
         Value response = Value.create();
 
         YAMLFactory factory = new YAMLFactory();
