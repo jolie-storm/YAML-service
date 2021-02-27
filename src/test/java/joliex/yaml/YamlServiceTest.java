@@ -106,7 +106,7 @@ public class YamlServiceTest {
     @Test
     public void testNestedMap() throws Exception {
         Value testValue = Value.create();
-        testValue.getNewChild("yaml").setValue(getFileContent(testName.getMethodName()));
+        testValue.getNewChild("yamlContent").setValue(getFileContent(testName.getMethodName()));
 
         Value response = yamlService.yamlToValue(testValue);
 
