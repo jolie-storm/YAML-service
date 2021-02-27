@@ -10,6 +10,9 @@ import jolie.runtime.ValueVector;
 import jolie.runtime.embedding.RequestResponse;
 
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 
 public class YamlService extends JavaService {
 
@@ -111,7 +114,7 @@ public class YamlService extends JavaService {
 
         while (token != JsonToken.END_OBJECT) {
             // next token must be a field identifier
-            if (token == JsonToken.FIELD_NAME) {
+           if (token == JsonToken.FIELD_NAME) {
                 // look ahead : must manage differently array start
                 // and simple values or object start definition
                 token = getNextToken(parser);
@@ -121,14 +124,16 @@ public class YamlService extends JavaService {
                     ValueVector valueVector = response.getChildren(getCurrentName(parser));
                     valueVector.deepCopy(parseYamlArray(parser));
                 } else if (token == JsonToken.START_OBJECT) {
-                    String currentFieldName = getCurrentName(parser);
-                    Value tmpRoot = Value.create();
-                    Value dummyChild = tmpRoot.getNewChild("dummy");
-                    parseYamlObject(dummyChild,parser);
-                    response.getChildren(currentFieldName).deepCopy(tmpRoot.getChildren("dummy"));
-                    //response.getNewChild(getCurrentName(parser)).assignValue(parseYamlObject(parser));
+                    String currentName = getCurrentName(parser);
+
+                    Value newChild = Value.create();
+                    parseYamlObject(newChild,parser);
+
+                    response.getNewChild(currentName).deepCopy(newChild);
                 } else {
-                    response.getNewChild(getCurrentName(parser)).assignValue(parseYamlSimpleValue(token,parser));
+                    Value newChild = response.getNewChild(getCurrentName(parser));
+                    parseYamlSimpleValue(newChild, token, parser);
+                    //response.getNewChild(getCurrentName(parser)).assignValue(parseYamlSimpleValue(token,parser));
                 }
             } else {
                 Value faultMessage = Value.create();
@@ -145,43 +150,47 @@ public class YamlService extends JavaService {
         // TO DO - complete
     }
 
-    private Value parseYamlSimpleValue(JsonToken token,YAMLParser parser) throws FaultException {
+    private void  parseYamlSimpleValue(Value node, JsonToken token, YAMLParser parser) throws FaultException {
         switch (token) {
             case VALUE_STRING:
                 try {
-                    return Value.create(parser.getValueAsString());
+                    node.setValue(parser.getValueAsString());
                 } catch (IOException e) {
                     Value faultMessage = Value.create();
                     faultMessage.getNewChild(MSG).setValue(UNABLE_TOGET_TOKEN_STRING);
                     throw new FaultException(YAMLERROR, faultMessage);
                 }
+                break;
             case VALUE_FALSE:
             case VALUE_TRUE:
                 try {
-                    return Value.create(parser.getBooleanValue());
+                    node.setValue(parser.getBooleanValue());
                 } catch (IOException e) {
                     Value faultMessage = Value.create();
                     faultMessage.getNewChild(MSG).setValue(UNABLE_TOGET_TOKEN_STRING);
                     throw new FaultException(YAMLERROR, faultMessage);
                 }
+                break;
             case VALUE_NULL:
-                return Value.create();
+                break;
             case VALUE_NUMBER_FLOAT:
                 try {
-                    return Value.create(parser.getDoubleValue());
+                    node.setValue(parser.getDoubleValue());
                 } catch (IOException e) {
                     Value faultMessage = Value.create();
                     faultMessage.getNewChild(MSG).setValue(UNABLE_TOGET_TOKEN_STRING);
                     throw new FaultException(YAMLERROR, faultMessage);
                 }
+                break;
             case VALUE_NUMBER_INT:
                 try {
-                    return Value.create(parser.getLongValue());
+                    node.setValue(parser.getLongValue());
                 } catch (IOException e) {
                     Value faultMessage = Value.create();
                     faultMessage.getNewChild(MSG).setValue(UNABLE_TOGET_TOKEN_STRING);
                     throw new FaultException(YAMLERROR, faultMessage);
                 }
+                break;
             default:
                 Value faultMessage = Value.create();
                 faultMessage.getNewChild(MSG).setValue(EXPECTED_VALUES + token.toString());
