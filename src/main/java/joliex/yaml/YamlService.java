@@ -95,8 +95,9 @@ public class YamlService extends JavaService {
             throw new FaultException(YAMLERROR, faultMessage);
         }
 
-        return parseYamlObject(parser);
-
+        Value response = Value.create();
+        parseYamlObject(response, parser);
+        return response;
     }
 
 
@@ -105,9 +106,7 @@ public class YamlService extends JavaService {
     // fill the response Value, with childs
     // each corresponding with the fields in yaml file
 
-    private Value parseYamlObject(YAMLParser parser) throws FaultException {
-        Value response = Value.create();
-
+    private void parseYamlObject(Value response, YAMLParser parser) throws FaultException {
         JsonToken token = getNextToken(parser);
 
         while (token != JsonToken.END_OBJECT) {
@@ -122,8 +121,11 @@ public class YamlService extends JavaService {
                     ValueVector valueVector = response.getChildren(getCurrentName(parser));
                     valueVector.deepCopy(parseYamlArray(parser));
                 } else if (token == JsonToken.START_OBJECT) {
-                    ValueVector valueVector = response.getChildren(getCurrentName(parser));
-                    valueVector.add(parseYamlObject(parser));
+                    String currentFieldName = getCurrentName(parser);
+                    Value tmpRoot = Value.create();
+                    Value dummyChild = tmpRoot.getNewChild("dummy");
+                    parseYamlObject(dummyChild,parser);
+                    response.getChildren(currentFieldName).deepCopy(tmpRoot.getChildren("dummy"));
                     //response.getNewChild(getCurrentName(parser)).assignValue(parseYamlObject(parser));
                 } else {
                     response.getNewChild(getCurrentName(parser)).assignValue(parseYamlSimpleValue(token,parser));
@@ -136,8 +138,6 @@ public class YamlService extends JavaService {
 
             token = getNextToken(parser);
         }
-
-        return response;
     }
 
     private ValueVector parseYamlArray(YAMLParser parser) {
