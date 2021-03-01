@@ -12,9 +12,3 @@ a_nested_map:
 # Maps don't have to have string keys.
 0.25: a float key
 
-# Keys can also be complex, like multi—line objects
-# We use ? followed by a space to indicate the start of a complex key.
-? |
-  This is a key
-  that has multiple lines
-: and this is its value

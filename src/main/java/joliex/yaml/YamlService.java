@@ -8,13 +8,14 @@ import jolie.runtime.JavaService;
 import jolie.runtime.Value;
 import jolie.runtime.embedding.RequestResponse;
 
-import javax.swing.text.html.parser.Parser;
 import java.io.IOException;
-import java.util.regex.Pattern;
+
+import java.util.LinkedList;
+
+
 
 public class YamlService extends JavaService {
 
-    private static final String CHILDYAML = "yaml";
 
     // Jolie type of error
     private static final String YAMLERROR = "YamlError";
@@ -28,17 +29,17 @@ public class YamlService extends JavaService {
     // Error Messages
     private static final String UNABLE_TO_CREATE_YAML_FACTORY = "Unable to create a Yaml factory to analise yaml file";
     private static final String UNABLE_GET_FIRST_TOKEN = "Unable to get the first token from file.";
-    private static final String START_OBJECT_EXPECTED = "Expected to start with an object definition";
-    private static final String EXPECTED_ENDOBJECT_FIELDNAME = "Expected END_OBJECT / FIELD_NAME, founded: ";
-    private static final String PARSER_CURRENTNAME = "Unable to get the current field name";
+
     private static final String EXPECTED_VALUES = "Expected START_OBJECT/START_ARRAY/VALUE_xx, found: ";
-    private static final String EXPECTED_VALUES_SETARRAY = "Expected START_OBJECT/START_ARRAY/VALUE_xx/END_ARRAY, found: ";
-    private static final String UNABLE_TOREAD_TOKEN = "Unable to read the next token (IOExecption)";
+
+
+    private static LinkedList<YamlJolieObject> linkedListYamlObject;
 
 
     @RequestResponse
     public Value yamlToValue(Value request) throws Exception {
-        System.out.println("sono qua");
+
+        linkedListYamlObject = new LinkedList<>();
         Value response = Value.create();
 
         YAMLFactory factory = new YAMLFactory();
@@ -46,6 +47,7 @@ public class YamlService extends JavaService {
 
         try {
             parser = factory.createParser(request.getFirstChild("yamlContent").strValue());
+
         } catch (IOException e) {
             Value faultMessage = Value.create();
             faultMessage.getNewChild(MSG).setValue(UNABLE_TO_CREATE_YAML_FACTORY);
@@ -53,15 +55,12 @@ public class YamlService extends JavaService {
         }
 
         try {
+
             JsonToken token = parser.nextToken();
-
-            if (token != JsonToken.START_OBJECT) {
-                Value faultMessage = Value.create();
-                faultMessage.getNewChild(MSG).setValue(START_OBJECT_EXPECTED);
-                throw new FaultException(YAMLERROR, faultMessage);
-            }
-
-            parseYamlObject(response, parser);
+            YamlJolieObject yamlJolieObject = new YamlJolieObject("root" , response);
+            linkedListYamlObject.add(yamlJolieObject);
+            parseYamlObject(response, parser, null);
+            linkedListYamlObject.clear();
 
         } catch (IOException e) {
             Value faultMessage = Value.create();
@@ -75,81 +74,126 @@ public class YamlService extends JavaService {
     // start of an object
     // fill the response Value, with childs
     // each corresponding with the fields in yaml file
-    private void parseYamlObject(Value response, YAMLParser parser) throws Exception {
+    private void parseYamlObject(Value response, YAMLParser parser, String nameNode) throws Exception {
         JsonToken token = parser.nextToken();
+        if (token != null) {
 
-        switch (token) {
-            case END_OBJECT:
-                return;
-            case START_ARRAY:
-                break;
-            case START_OBJECT:
-                //setObject(newChild, parser);
-                break;
-            case VALUE_STRING:
-                response.getChildren(parser.getCurrentName()).add(Value.create(parser.getValueAsString()));
-                break;
-            case VALUE_FALSE:
-            case VALUE_TRUE:
-                response.getChildren(parser.getCurrentName()).add(Value.create(parser.getBooleanValue()));
-                break;
-            case VALUE_NULL:
-                response.getChildren(parser.getCurrentName()).add(Value.create());
-                break;
-            case VALUE_NUMBER_FLOAT:
-                response.getChildren(parser.getCurrentName()).add(Value.create(parser.getDoubleValue()));
-                break;
-            case VALUE_NUMBER_INT:
-                response.getChildren(parser.getCurrentName()).add(Value.create(parser.getLongValue()));
-                break;
-            case FIELD_NAME:
-                break;
-            default:
-                Value faultMessage = Value.create();
-                faultMessage.getNewChild(MSG).setValue(EXPECTED_VALUES + token.toString());
-                throw new FaultException(YAMLERROR, faultMessage);
+            switch (token) {
+                case END_OBJECT:
+                    if (linkedListYamlObject.size()>1) {
+                        YamlJolieObject yamlJolieObjectList = linkedListYamlObject.get(linkedListYamlObject.size() - 1);
+                        YamlJolieObject yamlJolieObjectList1 = linkedListYamlObject.get(linkedListYamlObject.size() - 2);
+                        response = yamlJolieObjectList1.value;
+                        response.getChildren(yamlJolieObjectList.nodeName).add(yamlJolieObjectList.value);
+                        linkedListYamlObject.remove(linkedListYamlObject.size() - 1);
+                    }
+                    break;
+                case START_ARRAY:
+                    nameNode = parser.getCurrentName();
+                    break;
+                case END_ARRAY:
+                    nameNode = null;
+                    break;
+                case START_OBJECT:
+                    Value objectValue = Value.create();
+                    YamlJolieObject yamlJolieObject = new YamlJolieObject(parser.getCurrentName(), objectValue);
+                    linkedListYamlObject.add(yamlJolieObject);
+                    parseYamlObject(objectValue, parser, null);
+                    break;
+                case VALUE_STRING:
+                    if (nameNode == null) {
+                        response.getChildren(parser.getCurrentName()).add(Value.create(parser.getValueAsString()));
+
+                    } else if ((nameNode != null)) {
+                        response.getChildren(nameNode).add(Value.create(parser.getValueAsString()));
+
+                    }
+                    break;
+                case VALUE_FALSE:
+                case VALUE_TRUE:
+                    if (nameNode == null) {
+                        response.getChildren(parser.getCurrentName()).add(Value.create(parser.getBooleanValue()));
+
+                    } else if ((nameNode != null) && (parser.getCurrentName() == null)) {
+                        response.getChildren(nameNode).add(Value.create(parser.getBooleanValue()));
+
+                    }
+                    break;
+                case VALUE_NULL:
+                    if (nameNode == null) {
+                        response.getChildren(parser.getCurrentName()).add(Value.create(Value.create()));
+
+                    } else if ((nameNode != null) && (parser.getCurrentName() == null)) {
+                        response.getChildren(nameNode).add(Value.create(Value.create()));
+                    }
+                    break;
+                case VALUE_NUMBER_FLOAT:
+                    if (nameNode == null) {
+                        response.getChildren(parser.getCurrentName()).add(Value.create(parser.getDoubleValue()));
+
+                    } else if ((nameNode != null) && (parser.getCurrentName() == null)) {
+                        response.getChildren(nameNode).add(Value.create(Value.create(parser.getDoubleValue())));
+
+                    }
+                    break;
+                case VALUE_NUMBER_INT:
+                    if (nameNode == null) {
+                        response.getChildren(parser.getCurrentName()).add(Value.create(parser.getLongValue()));
+
+                    } else if ((nameNode != null) && (parser.getCurrentName() == null)) {
+                        response.getChildren(nameNode).add(Value.create(Value.create(parser.getLongValue())));
+                    }
+                    break;
+                case FIELD_NAME:
+                    break;
+                default:
+                    Value faultMessage = Value.create();
+                    faultMessage.getNewChild(MSG).setValue(EXPECTED_VALUES + token.toString());
+                    throw new FaultException(YAMLERROR, faultMessage);
+            }
+
+
+            if (nameNode == null) {
+                parseYamlObject(response, parser, null);
+            } else {
+                parseYamlObject(response, parser, nameNode);
+            }
         }
 
-        parseYamlObject(response,parser);
+
+    }
+    
 
 
-}
-
-    private void setArray(Value response , YAMLParser parser , String nameField) throws Exception {
+    private class YamlJolieObject{
 
 
-        JsonToken token = parser.nextToken();
-        switch (token) {
-            case END_OBJECT:
-                return;
-            case END_ARRAY:
-                break;
-            case START_OBJECT:
-                //setObject(newChild, parser);
-                break;
-            case VALUE_STRING:
-                response.getChildren(parser.getCurrentName()).add(Value.create(parser.getValueAsString()));
-                break;
-            case VALUE_FALSE:
-            case VALUE_TRUE:
-                response.getChildren(parser.getCurrentName()).add(Value.create(parser.getBooleanValue()));
-                break;
-            case VALUE_NULL:
-                response.getChildren(parser.getCurrentName()).add(Value.create());
-                break;
-            case VALUE_NUMBER_FLOAT:
-                response.getChildren(parser.getCurrentName()).add(Value.create(parser.getDoubleValue()));
-                break;
-            case VALUE_NUMBER_INT:
-                response.getChildren(parser.getCurrentName()).add(Value.create(parser.getLongValue()));
-                break;
-            case FIELD_NAME:
-                break;
-            default:
-                Value faultMessage = Value.create();
-                faultMessage.getNewChild(MSG).setValue(EXPECTED_VALUES + token.toString());
-                throw new FaultException(YAMLERROR, faultMessage);
+        private String nodeName;
+        private Value value;
+
+        public String getNodeName() {
+            return nodeName;
+        }
+
+        public void setNodeName(String nodeName) {
+            this.nodeName = nodeName;
+        }
+
+        public Value getValue() {
+            return value;
+        }
+
+        public void setValue(Value value) {
+            this.value = value;
+        }
+
+
+
+        public YamlJolieObject (String nodeName , Value value){
+            this.nodeName = nodeName;
+            this.value = value;
         }
 
     }
+
 }
