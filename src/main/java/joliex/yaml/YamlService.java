@@ -10,9 +10,6 @@ import jolie.runtime.ValueVector;
 import jolie.runtime.embedding.RequestResponse;
 
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
 
 public class YamlService extends JavaService {
 
@@ -44,38 +41,18 @@ public class YamlService extends JavaService {
     private static final String UNABLE_TOREAD_TOKEN = "Unable to read the next token (IOExecption)";
     private static final String UNABLE_TOGET_TOKEN_STRING = "Unable to get the string associated with the current token";
 
-    private JsonToken getNextToken(YAMLParser parser) throws FaultException {
-        JsonToken token = null;
-
-        try {
-            token = parser.nextToken();
-        } catch (IOException e) {
-            Value faultMessage = Value.create();
-            faultMessage.getNewChild(MSG).setValue(UNABLE_TOREAD_TOKEN + token.toString());
-            throw new FaultException(YAMLERROR, faultMessage);
-        }
-
-        return token;
-    }
-
-    private String getCurrentName(YAMLParser parser) throws FaultException {
-        try {
-            return parser.getCurrentName();
-        } catch (IOException e) {
-            Value faultMessage = Value.create();
-            faultMessage.getNewChild(MSG).setValue(UNABLE_TOGET_TOKEN_STRING);
-            throw new FaultException(YAMLERROR, faultMessage);
-        }
+    public YamlService() {
+        super();
     }
 
     @RequestResponse
-    public Value yamlToValue(Value request) throws Exception {
+    public Value yamlToValue(Value request) throws FaultException {
 
         YAMLFactory factory = new YAMLFactory();
         YAMLParser parser = null;
 
         try {
-            parser = factory.createParser(request.getFirstChild("yamlContent").strValue());
+            parser = factory.createParser(request.getFirstChild(CHILDYAML).strValue());
         } catch (IOException e) {
             Value faultMessage = Value.create();
             faultMessage.getNewChild(MSG).setValue(UNABLE_TO_CREATE_YAML_FACTORY);
@@ -103,6 +80,30 @@ public class YamlService extends JavaService {
         return response;
     }
 
+    private JsonToken getNextToken(YAMLParser parser) throws FaultException {
+        JsonToken token = null;
+
+        try {
+            token = parser.nextToken();
+        } catch (IOException e) {
+            Value faultMessage = Value.create();
+            faultMessage.getNewChild(MSG).setValue(UNABLE_TOREAD_TOKEN + token.toString());
+            throw new FaultException(YAMLERROR, faultMessage);
+        }
+
+        return token;
+    }
+
+    private String getCurrentName(YAMLParser parser) throws FaultException {
+        try {
+            return parser.getCurrentName();
+        } catch (IOException e) {
+            Value faultMessage = Value.create();
+            faultMessage.getNewChild(MSG).setValue(UNABLE_TOGET_TOKEN_STRING);
+            throw new FaultException(YAMLERROR, faultMessage);
+        }
+    }
+
 
 
     // start of an object
@@ -114,7 +115,7 @@ public class YamlService extends JavaService {
 
         while (token != JsonToken.END_OBJECT) {
             // next token must be a field identifier
-           if (token == JsonToken.FIELD_NAME) {
+            if (token == JsonToken.FIELD_NAME) {
                 // look ahead : must manage differently array start
                 // and simple values or object start definition
                 token = getNextToken(parser);
@@ -122,18 +123,12 @@ public class YamlService extends JavaService {
                 if (token == JsonToken.START_ARRAY) {
                     // assign array
                     ValueVector valueVector = response.getChildren(getCurrentName(parser));
-                    valueVector.deepCopy(parseYamlArray(parser));
+                    parseYamlArray(valueVector, parser);
                 } else if (token == JsonToken.START_OBJECT) {
-                    String currentName = getCurrentName(parser);
-
-                    Value newChild = Value.create();
-                    parseYamlObject(newChild,parser);
-
-                    response.getNewChild(currentName).deepCopy(newChild);
+                    parseYamlObject(response.getNewChild(getCurrentName(parser)), parser);
                 } else {
                     Value newChild = response.getNewChild(getCurrentName(parser));
                     parseYamlSimpleValue(newChild, token, parser);
-                    //response.getNewChild(getCurrentName(parser)).assignValue(parseYamlSimpleValue(token,parser));
                 }
             } else {
                 Value faultMessage = Value.create();
@@ -145,12 +140,30 @@ public class YamlService extends JavaService {
         }
     }
 
-    private ValueVector parseYamlArray(YAMLParser parser) {
-        return ValueVector.create();
-        // TO DO - complete
+    private void parseYamlArray(ValueVector fatherValueVector, YAMLParser parser) throws FaultException {
+        JsonToken token = getNextToken(parser);
+
+        while (token != JsonToken.END_ARRAY) {
+            if (token == JsonToken.START_ARRAY) {
+                // assign array
+                Value root = Value.create();
+                fatherValueVector.add(root.getNewChild(DUMMY_NODE));
+                ValueVector valueVector = root.getChildren(DUMMY_NODE);
+                parseYamlArray(valueVector, parser);
+            } else if (token == JsonToken.START_OBJECT) {
+                Value newChild = Value.create();
+                fatherValueVector.add(newChild);
+                parseYamlObject(newChild.getNewChild(getCurrentName(parser)), parser);
+            } else {
+                Value newChild = Value.create();
+                fatherValueVector.add(newChild);
+                parseYamlSimpleValue(newChild, token, parser);
+            }
+            token = getNextToken(parser);
+        }
     }
 
-    private void  parseYamlSimpleValue(Value node, JsonToken token, YAMLParser parser) throws FaultException {
+    private void parseYamlSimpleValue(Value node, JsonToken token, YAMLParser parser) throws FaultException {
         switch (token) {
             case VALUE_STRING:
                 try {
@@ -198,10 +211,4 @@ public class YamlService extends JavaService {
         }
     }
 
-    private void setArray(Value response, YAMLParser parser, String nameField) throws Exception {
-
-
-        JsonToken token = parser.nextToken();
-
-    }
 }
